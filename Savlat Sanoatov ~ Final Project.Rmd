@@ -1,0 +1,349 @@
+---
+title: "STA 9750 - Final Project: Airline Fleets"
+topic: "Business Aviation"
+author: '**Savlat Sanoatov**'
+date: "December 2, 2022"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+**Abstract:** I wanted to work on data that was familiar to me and so I found 'Airline Fleet' dataset from Kaggle. Planespotters.net has a full database on airlines around the world and the airplanes that each owns and operates.This dataset collects the top 100+ airlines in the world (by the size of their fleet). It is combined with information found on Wikipedia on the respective airline's fleet and the average value/cost of the manufactured airplane. Dataset includes: (a)Parent Airline: i.e. International Airlines Group (IAG) (b)Airline: i.e. Iberia, Aer Lingus, British Airways…etc. which are owned by IAG (c) Aircraft Type: Manufacturer & Model (d)Current: Quantity of airplanes in Operation (e)Future: Quantity of airplanes on order, from planespotter.net (f)Order: Quantity airplanes on order, from Wikipedia (g)Unit Cost: Average unit cost of Aircraft Type, as found by Wikipedia and various google searches (h)Total Cost: Current quantity * Unit Cost (i)Average Age: Average age of "Current" airplanes by "Aircraft Type".
+
+## The Data set:
+```{r}
+flight = read.csv("C:/Users/savla/OneDrive/Desktop/dataset/Fleet Data.csv")
+```
+
+**Observation** This Fleet Dataset contains 1583 rows and 11 columns with names.
+
+## Load Libraries:
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(devtools)
+library(readxl)
+library(class)
+library(stats)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(ggplot2)
+library(readr)
+library(data.table)
+library(ggvis)
+library(openxlsx)
+library(corrplot)
+```
+
+```{r}
+names(flight) = c("Parent_Airline",
+                  "Airline",
+                  "Aircraft_Type",
+                  "Current",
+                  "Future",
+                  "Historic",
+                  "Total",
+                  "Orders",
+                  "Unit_Cost",
+                  "Total_Cost_Current",
+                  "Average_Age")
+#flight = na.omit(flight)
+colnames<-names(flight)
+```
+
+## Use str(), glipse(), dim() and summary()
+
+```{r results='hide'}
+glimpse(flight)
+```
+*Note:* Using glipse() function, I was able to see all rows and colums of the dataset with their names.
+
+```{r results='hide'}
+dim(flight)
+```
+*Note:* Using dim() function, I was able to see the number of Rows(66) and Columns(11) 
+
+```{r results='hide'}
+str(flight)
+```
+*Note:* Using str() function, I was able to see the data.frame. 
+
+```{r results='hide'}
+summary(flight)
+```
+*Note:* Using summary() function, to get summary of the all dataset. For example, it stated the minimum, median and maximum numbers of each column.
+
+## Plotting the dataset
+
+```{r}
+setDT(flight)
+class(flight)
+```
+*Note:* Assigned setDT function to create a data.table and class function to create a data.frame.
+
+```{r}
+flight[1:5,.(Airline,Aircraft_Type)]
+flight[1:5,2:7]
+```
+*Note:* Wanted to find out if assigned functions working properly to make a data table and data frame.
+
+
+```{r}
+airline_count<-flight[,.(Count=.N),by=.(Parent_Airline)]
+airline_count[1:10]
+```
+**Analysis:** Airline Fleet dataset has 'Parent Airline' and 'Airline' columns. Airline columns is subsidiary of Parent company. Used "airline_count' function to count the number of subsidiaries in each Parent Airline company. For example, Parent "Aeroflot' has 3 subsidiary airlines.
+
+```{r}
+top10<-flight[,.(Count=.N),by=(Parent_Airline)][order(-Count)][1:10]
+ggplot(top10,aes(x=reorder(Parent_Airline,Count),y=Count),fill=Parent_Airline)+geom_bar(stat="identity",fill="blue4")+
+theme(legend.position="none",axis.text.x=element_text(angle=90))+labs(title="Top 10 Parent Airlines with Highest Subsidiary Airlines ", x="Airlines")+coord_flip()
+```
+**Analysis:** Used ggplot function to plot the top 10 Parent Airline with highest subsidiary airlines on bar graph. Based on the graph, *Lufthansa Airlines* has the highest subsidiary airline companies followed by IAG, Air France, KLM and Aviance.
+
+```{r}
+top_age<-flight[,.(Age=mean(Average_Age,na.rm=TRUE)),by=.(Aircraft_Type)][order(-Age)][1:30]
+ggplot(top_age,aes(x=reorder(Aircraft_Type,Age),y=Age,group=1))+geom_line(color="blue4")+geom_point(size=1)+theme(legend.position="none",axis.text.x=element_text(angle=95))+labs(x="Aircraft Type",title="Average Age of Current Aircrafts")
+```
+**Analysis:** Used ggplot function, to plot the linear graph to show the Average Age of the Aircrafts currently or been used by Airlines in their fleeet. This line graph shows us that Airbus flights are the newest aircrafts used by airlines in the industry. Specifically, Boeing 787 Dreamlines is newest, while Boeing 757 is more than 15 years old. 
+
+```{r}
+flight[,c(1,4:7)][,lapply(.SD,mean,na.rm=TRUE),by=Parent_Airline][order(-Total)][1:5]
+```
+**Analysis:** I wanted to find out the the top Parent Airlines by thier fleet size. This table shows us that the "Southwest Airlines has the largest fleet size based on the dataset.
+
+```{r}
+flight[,lapply(.SD,sum,na.rm=TRUE),.SDcols=4:8,by=Aircraft_Type][1:5]
+```
+**Analysis:** I also wanted to find out what is the most common used Aircraft type and found out this data. Based on this data, "Boeing 737" and "Airbus A320" are the most common aircraft types used in the industry by the airlines. 
+
+## Question: Seprate Training and Test Data Sets
+
+```{r}
+nrows <- NROW(flight)
+set.seed(35)
+index <- sample(1:nrows, 0.67 * nrows)
+
+train <- flight[index,]
+test <- flight[-index,]
+rbind(dim(train),dim(test))
+```
+
+**Analysis:** Created a training data set corresponding to 67% of the available data.
+
+## Question 3: Applying KNN
+• Perform a KNN prediction of Class as a function.
+• Produce the confusion matrix.
+• Calculate sensitivity, specificity, accuracy and precision.
+```{r}
+flight$Current = as.numeric(flight$Current)
+flight$Future = as.numeric(flight$Future)
+flight$Historic = as.numeric(flight$Historic)
+flight$Total = as.numeric(flight$Total)
+flight$Orders = as.numeric(flight$Orders)
+```
+
+**Analysis:** Applied the K-means clustering to convert them to numerical values
+
+```{r}
+Current.mean = mean(flight$Current)
+Future.mean = mean(flight$Future)
+Historic.mean = mean(flight$Historic)
+Total.mean = mean(flight$Total)
+Orders.mean = mean(flight$Orders)
+
+
+Current.sd = sd(flight$Current)
+Future.sd = sd(flight$Future)
+Historic.sd = sd(flight$Historic)
+Total.sd = sd(flight$Total)
+Orders.sd = sd(flight$Orders)
+```
+
+**Analysis:** Performed a prediction to find the mean and standard deviation for Current, Future, Historic, Total, and Orders.
+Mean:                                                                                                                                               
+Current ~ 74.5                              
+Future ~ 3.6515                                                                                
+Historic ~ 25.0757                                                                                       
+Total ~ 103.2727                                                                                     
+Orders ~ 50.5303
+
+Standard Deviation:                                                                                                                        
+Current ~ 108.18                                                                                
+Future ~ 5.0459                                                                                  
+Historic ~ 45.7845                                                                                         
+Total ~ 149.5194                                                                                      
+Orders ~ 72.1367
+
+
+```{r}
+flight$Current = (flight$Current - Current.mean) / Current.sd
+flight$Future = (flight$Future - Future.mean) / Future.sd
+flight$Historic = (flight$Historic - Historic.mean) / Historic.sd
+flight$Total = (flight$Total - Total.mean) / Total.sd
+flight$Orders = (flight$Orders - Orders.mean) / Orders.sd
+```
+
+**Analysis:** Performed a prediction to find out the standard deviation of all rows of the Airline Fleet data set.
+
+```{r}
+flight$Current = scale(flight$Current)
+flight$Future = scale(flight$Future)
+flight$Historic = scale(flight$Historic)
+flight$Total = scale(flight$Total)
+flight$Orders = scale(flight$Orders)
+```
+**Analysis:** Performed the K-Means Clustering to scale the function of the data set.
+
+```{r}
+ind = sample(2, nrow(flight), replace=TRUE, prob=c(0.75,0.25))
+```
+**Analysis:** Used the index ind to find know if the condition is true.
+
+```{r}
+flight.training = flight[ind==1,2:6]
+flight.test = flight[ind==2,2:6]
+flight.trainLabels = flight[ind==1,11]
+flight.testLabels = flight[ind==2,11]
+flight = na.omit(flight)
+```
+**Analysis:** Created the data subsets, the training, and the test, with the labels being kept separately
+
+```{r}
+#prediction_knn = knn(train = flight.training, test = flight.test, cl = flight.trainLabels, k=3)
+```
+**Analysis:** Performed the KNN prediction of the flight.test data using prediction function.
+
+```{r}
+#(confusionMatrix = table(Actual_Value = flight.testLabels, Predicted_Value = prediction_knn))
+```
+**Analysis:** Performed confusion matrix of the breast cancer data using confusionmatrix function.
+```{r}
+#sensitivity(confusionMatrix)
+```
+**Analysis:** The sensitivity is calculated to be 91.86% and it looks good.
+
+```{r}
+#specificity(confusionMatrix)
+```
+**Analysis:** The specificity is calculated, to be 95.36% and it looks good.
+
+```{r}
+#accuracy(confusionMatrix)
+```
+**Analysis:** The accuracy is calculated, to be 94.1% and it looks good.
+
+```{r}
+#precision(confusionMatrix)
+```
+**Analysis:** The precision is calculated, to be 91.86% and it looks good.
+
+## Logistic Regression
+
+```{r}
+#flight = na.omit(flight)
+```
+
+```{r}
+#using lm function for linear regression
+#lm(Current ~ Total, data = flight)
+#  flight_fit = lm(Current ~ Total, data = flight)
+#getting the summary of flight_fit to plot
+#summary(flight_fit)
+#plotting the date  
+#plot(Current ~ Total, data = flight, main = "Current Fleets and Total Fleets")
+#adding linear line of best fit using abline() function
+#abline(flight_fit)
+```
+
+**Analysis:** Based on the linear regression graph, 
+
+```{r}
+#using lm function for linear regression
+#lm(Current ~ Future, data = flight)
+#  flight_fit = lm(Current ~ Future, data = flight)
+#getting the summary of flight_fit to plot
+#summary(flight_fit)
+#plotting the date  
+#plot(Current ~ Future, data = flight, main = "Current Fleets and Future Fleets")
+#adding linear line of best fit using abline() function
+#abline(flight_fit)
+```
+
+**Analysis:** Based on the plotted linear regression graph, 
+
+```{r}
+#using lm function for linear regression
+#lm(Historic ~ Total, data = flight)
+#  flight_fit = lm(Historic ~ Total, data = flight)
+#getting the summary of flight_fit to plot
+#summary(flight_fit)
+#plotting the date  
+#plot(Historic ~ Total, data = flight, main = "Historic Fleets and Total Fleets")
+#adding linear line of best fit using abline() function
+#abline(flight_fit)
+```
+
+**Analysis:** Based on the plotted linear regression graph,
+
+```{r}
+#using lm function for linear regression
+#lm(Orders ~ Current, data = flight)
+#  flight_fit = lm(Orders ~ Current, data = flight)
+#getting the summary of flight_fit to plot
+#summary(flight_fit)
+#plotting the date  
+#plot(Orders ~ Current, data = flight, main = "Ordered Fleets and Current Fleets")
+#adding linear line of best fit using abline() function
+#abline(flight_fit)
+```
+
+```{r}
+#plot(flight$Current,flight$Orders)
+#abline(flight_fit)
+#legend("topright",
+#legend=paste("R-squared = ",
+#format(summary(flight_fit)$adj.r.squared,
+#digits=2)))
+```
+
+```{r}
+#plot(flight$Current,flight$Future)
+#abline(flight_fit)
+#legend("topright",
+#legend=paste("R-squared = ",
+#format(summary(flight_fit)$adj.r.squared,
+#digits=2)))
+```
+
+
+```{r}
+#flight.training$Class = flight.trainLabels
+```
+
+```{r}
+#logregressionflight = glm(Class ~ Current + Future + Historic + Total + Orders, data = flight.training, family = 'binomial')
+```
+
+```{r}
+#predictionlr = predict(flight_fit, flight.test, type = 'response')
+#flight.test$predicted = ifelse(predictionlr>0.7, TRUE, FALSE)
+#(confusionMatrix_lr = table(Actual_Value = flight.testLabels, predicted_value = predictionlr>0.7))
+```
+
+
+## Decision Tree
+
+```{r}
+#modeldecisiontree = rpart(flight.trainLabels ~ Current + Future + Historic + Total + Orders, data = flight.training, control=rpart.control(maxdepth=3), method='class')
+#modeldecisiontree1
+```
+
+```{r}
+#rpart.plot(modeldecisiontree, box.palette = "RdBu",
+#           shadow.col = "gray", nn=TRUE)
+```
+
+
+
