@@ -1,0 +1,87 @@
+---
+title: STA 9750 - Final Project: Airline Fleets 
+author: '**Savlat Sanoatov**'
+date: "December 2, 2022"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+**Abstract:** Planespotters.net has a full database on airlines around the world and the airplanes that each owns and operates.This dataset collects the top 100+ airlines in the world (by the size of their fleet). It is combined with information found on Wikipedia on the respective airline's fleet and the average value/cost of the manufactured airplane. Dataset includes: (a)Parent Airline: i.e. International Airlines Group (IAG) (b)Airline: i.e. Iberia, Aer Lingus, British Airways…etc. which are owned by IAG (c) Aircraft Type: Manufacturer & Model (d)Current: Quantity of airplanes in Operation (e)Future: Quantity of airplanes on order, from planespotter.net (f)Order: Quantity airplanes on order, from Wikipedia (g)Unit Cost: Average unit cost of Aircraft Type, as found by Wikipedia and various google searches (h)Total Cost: Current quantity * Unit Cost (i)Average Age: Average age of "Current" airplanes by "Aircraft Type".
+
+## The Data set:
+```{r}
+flight = read.csv("C:/Users/savla/OneDrive/Desktop/dataset/Fleet Data.csv")
+```
+
+**Observation** This Fleet Dataset contains 1583 rows and 11 columns with names.
+
+## Load in Libraries:
+
+```{r results='hide'}
+library(tidyverse)
+library(dplyr)
+library(devtools)
+library(readxl)
+library(rvest)
+library(sf)
+library(rjson)
+library(jsonlite)
+library(tidycensus)
+library(class)
+library(stats)
+library(rpart)
+library(rpart.plot)
+library(ggplot2)
+library(readr)
+library(data.table)
+```
+
+
+```{r}
+names(flight) = c("Parent_Airline",
+                  "Airline",
+                  "Aircraft_Type",
+                  "Current",
+                  "Future",
+                  "Historic",
+                  "Total",
+                  "Orders",
+                  "Unit_Cost",
+                  "Total_Cost_Current",
+                  "Average_Age")
+colnames<-names(flight)
+```
+
+Question 1 use str(), glipse(), dim() and summary()
+```{r results='hide'}
+glimpse(flight)
+```
+*Note:* Using glipse() function, I was able to see all rows and colums of the dataset with their names.
+
+```{r results='hide'}
+dim(flight)
+```
+*Note:* Using dim() function, I was able to see the number of Rows(1583) and Columns(11) 
+
+```{r results='hide'}
+str(flight)
+```
+*Note:* Using str() function, I was able to see the number of Rows(1583) and Columns(11) 
+
+```{r results='hide'}
+summary(flight)
+```
+*Note:* Using summary() function, 
+
+
+
+
+
+
+
+
+
+
+
+
