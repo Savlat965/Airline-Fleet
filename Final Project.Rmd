@@ -1,11 +1,3 @@
----
-title: STA 9750 - Final Project: Airline Fleets 
-author: '**Savlat Sanoatov**'
-date: "December 2, 2022"
-output:
-  word_document: default
-  pdf_document: default
----
 
 **Abstract:** Planespotters.net has a full database on airlines around the world and the airplanes that each owns and operates.This dataset collects the top 100+ airlines in the world (by the size of their fleet). It is combined with information found on Wikipedia on the respective airline's fleet and the average value/cost of the manufactured airplane. Dataset includes: (a)Parent Airline: i.e. International Airlines Group (IAG) (b)Airline: i.e. Iberia, Aer Lingus, British Airways…etc. which are owned by IAG (c) Aircraft Type: Manufacturer & Model (d)Current: Quantity of airplanes in Operation (e)Future: Quantity of airplanes on order, from planespotter.net (f)Order: Quantity airplanes on order, from Wikipedia (g)Unit Cost: Average unit cost of Aircraft Type, as found by Wikipedia and various google searches (h)Total Cost: Current quantity * Unit Cost (i)Average Age: Average age of "Current" airplanes by "Aircraft Type".
 
